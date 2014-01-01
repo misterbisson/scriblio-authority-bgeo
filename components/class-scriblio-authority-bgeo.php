@@ -8,6 +8,7 @@ class Scriblio_Authority_bGeo
 	public $post_meta_defaults = array(
 		'type' => FALSE,
 	);
+	public $wikipedia = FALSE;
 
 	public function __construct()
 	{
@@ -18,7 +19,6 @@ class Scriblio_Authority_bGeo
 
 	public function init()
 	{
-
 		// do not continue if the required plugins are not active
 		if (
 			! function_exists( 'authority_record' ) ||
@@ -69,6 +69,19 @@ class Scriblio_Authority_bGeo
 		}
 
 	} // END init
+
+	// a singleton for the wikipedia object
+	public function wikipedia()
+	{
+		if ( ! $this->wikipedia )
+		{
+			require_once __DIR__ . '/class-scriblio-authority-bgeo-wikipedia.php';
+			$this->wikipedia = new Scriblio_Authority_bGeo_Wikipedia();
+		}
+
+		return $this->wikipedia;
+	} // END wikipedia
+
 	public function add_meta_boxes( $post_type, $post )
 	{
 		if ( $post_type != authority_record()->post_type_name )
@@ -149,7 +162,7 @@ class Scriblio_Authority_bGeo
 	public function get_post_meta( $post_id )
 	{
 		// filter the meta to set default values and whitelist the returned keys
-		return = (object) array_replace( // set default values for everything, replace the defaults with specific values where present
+		return (object) array_replace( // set default values for everything, replace the defaults with specific values where present
 			$this->post_meta_defaults,
 			array_intersect_key( // only return keys defined in the defaults, never any others
 				(array) get_post_meta( $post_id, $this->meta_key, TRUE ),

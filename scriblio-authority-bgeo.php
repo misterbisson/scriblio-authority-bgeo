@@ -1,6 +1,6 @@
 <?php
 /*
-Plugin Name: Scriblio Authority bGeo integration
+Plugin Name: Scriblio Term Authority bGeo integration
 Plugin URI: https://github.com/misterbisson/scriblio-authority-bgeo
 Description:
 Version: 0.1

@@ -6,7 +6,7 @@ class Scriblio_Authority_bGeo
 	public $meta_key = 'scriblio-authority-bgeo';
 	public $id_base = 'scriblio-authority-bgeo';
 	public $post_meta_defaults = array(
-		'key' => 'value',
+		'type' => FALSE,
 	);
 
 	public function __construct()
@@ -18,16 +18,47 @@ class Scriblio_Authority_bGeo
 
 	public function init()
 	{
+
+		// do not continue if the required plugins are not active
+		if (
+			! function_exists( 'authority_record' ) ||
+			! function_exists( 'bgeo' )
+		)
+		{
+			return;
+		}
+
+		// we depend on both the custom taxonomy registed in bGeo as well as
+		// a custom taxonomy describing the type of geography
 		register_taxonomy(
-			'a-taxonomy',
-			NULL,
+			'bgeo_types',
+			array( authority_record()->post_type_name ), 
 			array(
-				'label'   => 'A Taxonomy',
-				'rewrite' => array(
-					'slug' => 'a-tax',
+				'label' => 'Geographies',
+				'labels' => array(
+					'singular_name' => 'Geography type',
+					'menu_name' => 'Geography types',
+					'all_items' => 'All geography types',
+					'edit_item' => 'Edit geography type',
+					'view_item' => 'View geography type',
+					'update_item' => 'Update geography type',
+					'add_new_item' => 'Add geography type',
+					'new_item_name' => 'New geography type',
+					'search_items' => 'Search geography types',
+					'popular_items' => 'Popular geography types',
+					'separate_items_with_commas' => 'Separate geography types with commas',
+					'add_or_remove_items' => 'Add or remove geography types',
+					'choose_from_most_used' => 'Choose from most used geography types',
+					'not_found' => 'No geography types found',
 				),
-				'show_ui'      => FALSE,
-				'hierarchical' => FALSE,
+				// 'hierarchical' => TRUE,
+				'show_ui' => TRUE,
+				'show_admin_column' => TRUE,
+				'query_var' => TRUE,
+				'rewrite' => array(
+					'slug' => 'geography-type',
+					'with_front' => FALSE,
+				),
 			)
 		);
 
@@ -38,7 +69,6 @@ class Scriblio_Authority_bGeo
 		}
 
 	} // END init
-
 	public function add_meta_boxes( $post_type, $post )
 	{
 		if ( $post_type != authority_record()->post_type_name )
@@ -46,7 +76,7 @@ class Scriblio_Authority_bGeo
 			return;
 		}
 
-		if ( 'my_tax' != $this->get_primary_tax( $post->ID ) )
+		if ( $this->get_primary_tax( $post->ID ) != bgeo()->geo_taxonomy_name )
 		{
 			return;
 		}
@@ -56,7 +86,7 @@ class Scriblio_Authority_bGeo
 
 	public function meta_box( $post )
 	{
-		if ( 'my_tax' != $this->get_primary_tax( $post->ID ) )
+		if ( $this->get_primary_tax( $post->ID ) != bgeo()->geo_taxonomy_name )
 		{
 			return;
 		}

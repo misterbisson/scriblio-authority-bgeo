@@ -22,8 +22,10 @@ class Scriblio_Authority_bGeo
 	{
 
 echo '<pre>';
-print_r( $this->dbpedia()->get( 'Los_Angeles' ) );
-print_r( $this->wikipedia()->get( 'Los Angeles' ) );
+print_r( $this->dbpedia()->get( 'Midwestern_United_States' ) );
+print_r( $this->dbpedia()->errors );
+print_r( $this->wikipedia()->get( 'Midwestern_United_States' ) );
+print_r( $this->wikipedia()->errors );
 //print_r( $this->wikipedia()->search( 'avenue q' ) );
 echo '</pre>';
 

@@ -6,7 +6,7 @@ class Scriblio_Authority_bGeo_Wikipedia
 	public $cache_ttl_fail = 1013; // prime numbers make good TTLs
 	public $cache_ttl_success = 0; // indefinitely
 	public $errors = array();
-//	public $id_base = 'scriblio-authority-bgeo-dbpedia';
+	public $id_base = 'scriblio-authority-bgeo-wikipedia';
 	public $language = 'en';
 
 	public function __construct()
@@ -36,12 +36,12 @@ class Scriblio_Authority_bGeo_Wikipedia
 
 		if ( ! $api_result = wp_cache_get( $this->cache_key( 'get', $page ), $this->id_base ) )
 		{
-			$url = sprintf( 
+			$url = sprintf(
 				'http://%1$s.wikipedia.org/w/api.php?action=query&redirects&format=json&prop=info|extracts|coordinates|pageimages|categories&inprop=displaytitle|url&explaintext&exintro&pithumbsize=3000&cllimit=500&clshow=!hidden&titles=%2$s',
 				$this->language,
 				urlencode( $page )
 			);
-	
+
 			$api_result = wp_remote_get( $url );
 
 			wp_cache_set( $this->cache_key( 'get', $page ), $api_result, $this->id_base, $this->cache_ttl( wp_remote_retrieve_response_code( $api_result ) ) );
@@ -91,12 +91,12 @@ class Scriblio_Authority_bGeo_Wikipedia
 			$page->parsedcategories[] = $category->title;
 
 			// removing preposition clauses that make for overly-specific categories
-			if ( 
+			if (
 				( $less_specific = preg_replace( '/\s(established|in|on|of)\s.*/', '', $category->title ) ) &&
 				$less_specific != $category->title
 			)
 			{
-				$page->parsedcategories[] = $less_specific;			
+				$page->parsedcategories[] = $less_specific;
 
 				// and what the hell, capture the detail as a category as well
 				$detail = preg_replace( '/.*\s(in|on|of)\s/', '', $category->title );
@@ -110,7 +110,7 @@ class Scriblio_Authority_bGeo_Wikipedia
 			// make sure we capture all "Populated places"
 			if ( preg_match( '/^Populated /', $category->title ) )
 			{
-				$page->parsedcategories[] = 'Populated places';			
+				$page->parsedcategories[] = 'Populated places';
 			}
 		}
 
@@ -126,7 +126,7 @@ class Scriblio_Authority_bGeo_Wikipedia
 
 		if ( ! $api_result = wp_cache_get( $this->cache_key( 'search', $search ), $this->id_base ) )
 		{
-			$url = sprintf( 
+			$url = sprintf(
 				'http://%1$s.wikipedia.org/w/api.php?action=opensearch&format=json&limit=100&search=%2$s',
 				$this->language,
 				urlencode( $search )
@@ -140,7 +140,7 @@ class Scriblio_Authority_bGeo_Wikipedia
 		if ( 200 != wp_remote_retrieve_response_code( $api_result ) )
 		{
 			$this->errors[] = new WP_Error(
-				'api_response_error', 'The endpoint returned a non-200 response. This response may have been cached.', 
+				'api_response_error', 'The endpoint returned a non-200 response. This response may have been cached.',
 				wp_remote_retrieve_response_code( $api_result ) . wp_remote_retrieve_response_message( $api_result )
 			);
 			return FALSE;

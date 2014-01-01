@@ -1,13 +1,4 @@
 <?php
-/*
-// docs: http://en.wikipedia.org/w/api.php
-
-http://en.wikipedia.org/w/api.php?action=query&format=json&prop=info|extracts|coordinates|pageimages|categories&inprop=displaytitle|url&explaintext&exintro&pithumbsize=2000&cllimit=500&clshow=!hidden&titles=Washington,_D.C.
-
-// DBpedia http://dbpedia.org/About
-
-http://dbpedia.org/data/Washington,_D.C..json
-*/
 
 class Scriblio_Authority_bGeo_Wikipedia
 {
@@ -15,6 +6,7 @@ class Scriblio_Authority_bGeo_Wikipedia
 	public $cache_ttl_fail = 1013; // prime numbers make good TTLs
 	public $cache_ttl_success = 0; // indefinitely
 	public $errors = array();
+//	public $id_base = 'scriblio-authority-bgeo-dbpedia';
 	public $language = 'en';
 
 	public function __construct()

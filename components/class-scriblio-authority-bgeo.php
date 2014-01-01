@@ -2,12 +2,13 @@
 
 class Scriblio_Authority_bGeo
 {
-	public $version = 1;
-	public $meta_key = 'scriblio-authority-bgeo';
+	public $dbpedia = FALSE;
 	public $id_base = 'scriblio-authority-bgeo';
+	public $meta_key = 'scriblio-authority-bgeo';
 	public $post_meta_defaults = array(
 		'type' => FALSE,
 	);
+	public $version = 1;
 	public $wikipedia = FALSE;
 
 	public function __construct()
@@ -19,6 +20,13 @@ class Scriblio_Authority_bGeo
 
 	public function init()
 	{
+
+echo '<pre>';
+print_r( $this->dbpedia()->get( 'Los_Angeles' ) );
+print_r( $this->wikipedia()->get( 'Los Angeles' ) );
+//print_r( $this->wikipedia()->search( 'avenue q' ) );
+echo '</pre>';
+
 		// do not continue if the required plugins are not active
 		if (
 			! function_exists( 'authority_record' ) ||
@@ -69,6 +77,18 @@ class Scriblio_Authority_bGeo
 		}
 
 	} // END init
+
+	// a singleton for the dbpedia object
+	public function dbpedia()
+	{
+		if ( ! $this->dbpedia )
+		{
+			require_once __DIR__ . '/class-scriblio-authority-bgeo-dbpedia.php';
+			$this->dbpedia = new Scriblio_Authority_bGeo_DBpedia();
+		}
+
+		return $this->dbpedia;
+	} // END dbpedia
 
 	// a singleton for the wikipedia object
 	public function wikipedia()

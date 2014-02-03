@@ -13,7 +13,7 @@ class Scriblio_Authority_bGeo
 
 	public function __construct()
 	{
-		add_action( 'init', array( $this, 'init' ) );
+		add_action( 'init', array( $this, 'init' ), 1 );
 		add_action( 'add_meta_boxes', array( $this, 'add_meta_boxes' ), 10, 2 );
 		add_action( 'save_post', array( $this, 'save_post' ) );
 	} // END __construct
@@ -22,11 +22,13 @@ class Scriblio_Authority_bGeo
 	{
 
 echo '<pre>';
-print_r( $this->dbpedia()->get( 'Midwestern_United_States' ) );
-print_r( $this->dbpedia()->errors );
-print_r( $this->wikipedia()->get( 'Midwestern_United_States' ) );
-print_r( $this->wikipedia()->errors );
-//print_r( $this->wikipedia()->search( 'avenue q' ) );
+//print_r( $this->dbpedia()->get( 'Midwestern_United_States' ) );
+//print_r( $this->dbpedia()->errors );
+//print_r( $this->wikipedia()->get( 'Los_Angeles_(disambiguation)' ) );
+//print_r( $this->wikipedia()->search( 'Sierra Leone, Northern, Sierra Leone' ) );
+//print_r( $this->wikipedia()->search( 'Saint Barthelemy' ) );
+//print_r( $this->wikipedia()->get( 'Mississippi' ) );
+//print_r( $this->wikipedia()->errors );
 echo '</pre>';
 
 		// do not continue if the required plugins are not active
@@ -72,6 +74,16 @@ echo '</pre>';
 			)
 		);
 
+		// conditionally register the bgeo custom taxonomy
+		if ( ! is_tax( bgeo()->geo_taxonomy_name ) )
+		{
+			bgeo()->register_taxonomy();
+		}
+
+		// make sure both taxonomies are registered with the Scriblio Authority plugin
+		authority_record()->add_taxonomy( bgeo()->geo_taxonomy_name );
+		authority_record()->add_taxonomy( 'bgeo_types' );
+
 		if ( is_admin() )
 		{
 			wp_enqueue_style( $this->id_base, plugins_url( '/css/scriblio-authority-bgeo.css', __FILE__ ), array(), $this->version );
@@ -111,20 +123,28 @@ echo '</pre>';
 			return;
 		}
 
+/*
 		if ( $this->get_primary_tax( $post->ID ) != bgeo()->geo_taxonomy_name )
 		{
 			return;
 		}
+*/
 
 		add_meta_box( $this->id_base, 'Geography', array( $this, 'meta_box' ), authority_record()->post_type_name, 'normal', 'high' );
 	} // END add_meta_boxes
 
 	public function meta_box( $post )
 	{
+/*
 		if ( $this->get_primary_tax( $post->ID ) != bgeo()->geo_taxonomy_name )
 		{
 			return;
 		}
+*/
+
+		include_once __DIR__ . '/templates/metabox-details.php';
+
+		bgeo()->admin()->metabox( $this->get_primary_term( $post->ID ), $this->get_primary_term( $post->ID )->taxonomy );
 
 		// metabox here
 
@@ -193,17 +213,17 @@ echo '</pre>';
 		);
 	} // END get_post_meta
 
-	public function get_primary_tax( $post_id )
+	public function get_primary_term( $post_id )
 	{
 		$authority_meta = authority_record()->get_post_meta( $post_id );
 
-		if ( isset( $authority_meta['primary_term']->taxonomy ) )
+		if ( ! isset( $authority_meta['primary_term']->taxonomy, $authority_meta['primary_term']->term_id ) )
 		{
-			return $authority_meta['primary_term']->taxonomy;
+			return FALSE;
 		} // END if
 
-		return FALSE;
-	} // END get_primary_tax
+		return $authority_meta['primary_term'];
+	} // END get_primary_term
 
 	public function get_field_name( $field_name )
 	{

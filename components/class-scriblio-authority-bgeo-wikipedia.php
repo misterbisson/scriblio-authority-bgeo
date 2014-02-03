@@ -72,6 +72,9 @@ class Scriblio_Authority_bGeo_Wikipedia
 
 	public function parse_page( $page )
 	{
+		// put more space in the extract
+		$page->extract = str_replace( "\n", "\n\n", $page->extract );
+
 		// capture the URL encoded title
 		$page->encodedtitle = preg_replace( '#http.*/wiki/#', '', $page->fullurl );
 

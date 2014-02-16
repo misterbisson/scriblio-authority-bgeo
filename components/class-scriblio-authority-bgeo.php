@@ -7,6 +7,10 @@ class Scriblio_Authority_bGeo
 	public $meta_key = 'scriblio-authority-bgeo';
 	public $post_meta_defaults = array(
 		'type' => FALSE,
+		'woeid' => FALSE,
+		'woeid_r' => FALSE,
+		'wikipedia' => FALSE,
+		'wikipedia_r' => FALSE,
 	);
 	public $version = 1;
 	public $wikipedia = FALSE;
@@ -21,7 +25,7 @@ class Scriblio_Authority_bGeo
 	public function init()
 	{
 
-echo '<pre>';
+//echo '<pre>';
 //print_r( $this->dbpedia()->get( 'Midwestern_United_States' ) );
 //print_r( $this->dbpedia()->errors );
 //print_r( $this->wikipedia()->get( 'Los_Angeles_(disambiguation)' ) );
@@ -29,7 +33,7 @@ echo '<pre>';
 //print_r( $this->wikipedia()->search( 'Saint Barthelemy' ) );
 //print_r( $this->wikipedia()->get( 'Mississippi' ) );
 //print_r( $this->wikipedia()->errors );
-echo '</pre>';
+//echo '</pre>';
 
 		// do not continue if the required plugins are not active
 		if (
@@ -44,7 +48,7 @@ echo '</pre>';
 		// a custom taxonomy describing the type of geography
 		register_taxonomy(
 			'bgeo_types',
-			array( authority_record()->post_type_name ), 
+			array( authority_record()->post_type_name ),
 			array(
 				'label' => 'Geographies',
 				'labels' => array(
@@ -123,30 +127,47 @@ echo '</pre>';
 			return;
 		}
 
-/*
-		if ( $this->get_primary_tax( $post->ID ) != bgeo()->geo_taxonomy_name )
+		if (
+			! ( $primary_term = authority_record()->get_primary_term( $post->ID ) ) ||
+			$primary_term->taxonomy != bgeo()->geo_taxonomy_name
+		)
 		{
 			return;
 		}
-*/
 
 		add_meta_box( $this->id_base, 'Geography', array( $this, 'meta_box' ), authority_record()->post_type_name, 'normal', 'high' );
+
 	} // END add_meta_boxes
 
 	public function meta_box( $post )
 	{
-/*
-		if ( $this->get_primary_tax( $post->ID ) != bgeo()->geo_taxonomy_name )
+
+		if (
+			! ( $primary_term = authority_record()->get_primary_term( $post->ID ) ) ||
+			$primary_term->taxonomy != bgeo()->geo_taxonomy_name
+		)
 		{
 			return;
 		}
-*/
+
+		// get our meta
+		$meta = $this->get_post_meta( $post->ID );
+
+		// get the primary term's geo object
+		$geo = bgeo()->get_geo( $primary_term->term_id, $primary_term->taxonomy );
+		// create a default geo obgect if the above failed
+		if( ! is_object( $geo ))
+		{
+			$geo = (object) array(
+				'point' => NULL,
+				'point_lat' => NULL,
+				'point_lon' => NULL,
+				'bounds' => NULL,
+			);
+		}
+		wp_localize_script( $this->id_base . '-admin', $this->id_base . '_term', (array) $geo );
 
 		include_once __DIR__ . '/templates/metabox-details.php';
-
-		bgeo()->admin()->metabox( $this->get_primary_term( $post->ID ), $this->get_primary_term( $post->ID )->taxonomy );
-
-		// metabox here
 
 	} // END meta_box
 
@@ -188,7 +209,7 @@ echo '</pre>';
 	public function update_post_meta( $post_id, $post_meta )
 	{
 		// filter the meta to set default values and whitelist the returned keys
-		$post_meta = (object) array_replace( // set default values for everything, replace the defaults with specific values where present
+		$post_meta = array_replace( // set default values for everything, replace the defaults with specific values where present
 			$this->post_meta_defaults,
 			array_intersect_key( // only return keys defined in the defaults, never any others
 				(array) $post_meta,
@@ -212,18 +233,6 @@ echo '</pre>';
 			)
 		);
 	} // END get_post_meta
-
-	public function get_primary_term( $post_id )
-	{
-		$authority_meta = authority_record()->get_post_meta( $post_id );
-
-		if ( ! isset( $authority_meta['primary_term']->taxonomy, $authority_meta['primary_term']->term_id ) )
-		{
-			return FALSE;
-		} // END if
-
-		return $authority_meta['primary_term'];
-	} // END get_primary_term
 
 	public function get_field_name( $field_name )
 	{

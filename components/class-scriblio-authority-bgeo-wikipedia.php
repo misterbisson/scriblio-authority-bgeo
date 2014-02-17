@@ -7,6 +7,7 @@ class Scriblio_Authority_bGeo_Wikipedia
 	public $cache_ttl_success = 0; // indefinitely
 	public $errors = array();
 	public $id_base = 'scriblio-authority-bgeo-wikipedia';
+	public $image_size_max = 300;
 	public $language = 'en';
 
 	public function __construct()
@@ -37,8 +38,9 @@ class Scriblio_Authority_bGeo_Wikipedia
 		if ( ! $api_result = wp_cache_get( $this->cache_key( 'get', $page ), $this->id_base ) )
 		{
 			$url = sprintf(
-				'http://%1$s.wikipedia.org/w/api.php?action=query&redirects&format=json&prop=info|extracts|coordinates|pageimages|categories&inprop=displaytitle|url&explaintext&exintro&pithumbsize=3000&cllimit=500&clshow=!hidden&titles=%2$s',
+				'http://%1$s.wikipedia.org/w/api.php?action=query&redirects&format=json&prop=info|extracts|coordinates|pageimages|categories&inprop=displaytitle|url&explaintext&exintro&pithumbsize=%2$s&cllimit=500&clshow=!hidden&titles=%3$s',
 				$this->language,
+				$this->image_size_max,
 				urlencode( $page )
 			);
 
@@ -79,9 +81,13 @@ class Scriblio_Authority_bGeo_Wikipedia
 		$page->encodedtitle = preg_replace( '#http.*/wiki/#', '', $page->fullurl );
 
 		// clean up the categories
+		$categories = $page->categories;
+		reset( $categories );
 		$page->parsedcategories = array();
-		foreach ( $page->categories as $category )
+		do
 		{
+			$category = current( $categories );
+
 			if ( 14 != $category->ns )
 			{
 				continue;
@@ -95,20 +101,43 @@ class Scriblio_Authority_bGeo_Wikipedia
 
 			// removing preposition clauses that make for overly-specific categories
 			if (
-				( $less_specific = preg_replace( '/\s(established|in|on|of)\s.*/', '', $category->title ) ) &&
+				( $less_specific = preg_replace( '/\s(established|in|on|of|-)\s.*/', '', $category->title ) ) &&
 				$less_specific != $category->title
 			)
 			{
 				$page->parsedcategories[] = $less_specific;
+				$categories[] = (object) array( 'ns' => 14, 'title' => 'Category:' . $less_specific );
 
 				// and what the hell, capture the detail as a category as well
-				$detail = preg_replace( '/.*\s(in|on|of)\s/', '', $category->title );
+				$detail = preg_replace( '/.*?\s(in|on|of|-)\s/', '', $category->title );
 				if ( ! is_numeric( $detail ) )
 				{
 					$page->parsedcategories[] = $detail;
+					$categories[] = (object) array( 'ns' => 14, 'title' => 'Category:' . $detail );
 				}
-
 			}
+
+			/* disabled...these are interesting, but not necessarily helpful as is
+			// split on prepositions and other keywords
+			if ( preg_match( '/\s(established|in|on|of|-)\s/', $category->title ) )
+			{
+				$parts = array_map( 'trim', preg_split( '/\s(established|in|on|of|-)\s/', $category->title ) );
+				foreach ( $parts as $part )
+				{
+					$categories[] = (object) array( 'ns' => 14, 'title' => 'Category:' . $part );
+				}
+			}
+
+			// split on commas
+			if ( strpos( $category->title, ',' ) )
+			{
+				$parts = array_map( 'trim', explode( ',', $category->title ) );
+				foreach ( $parts as $part )
+				{
+					$categories[] = (object) array( 'ns' => 14, 'title' => 'Category:' . $part );
+				}
+			}
+			*/
 
 			// make sure we capture all "Populated places"
 			if ( preg_match( '/^Populated /', $category->title ) )
@@ -116,6 +145,7 @@ class Scriblio_Authority_bGeo_Wikipedia
 				$page->parsedcategories[] = 'Populated places';
 			}
 		}
+		while ( next( $categories ) );
 
 		$page->parsedcategories = array_unique( $page->parsedcategories );
 

@@ -6,11 +6,11 @@ class Scriblio_Authority_bGeo
 	public $id_base = 'scriblio-authority-bgeo';
 	public $meta_key = 'scriblio-authority-bgeo';
 	public $post_meta_defaults = array(
-		'type' => FALSE,
-		'woeid' => FALSE,
-		'woeid_r' => FALSE,
-		'wikipedia' => FALSE,
-		'wikipedia_r' => FALSE,
+		'type' => NULL,
+		'woeid' => NULL,
+		'woeid_r' => NULL,
+		'wikipedia' => NULL,
+		'wikipedia_r' => NULL,
 	);
 	public $version = 1;
 	public $wikipedia = FALSE;
@@ -19,7 +19,7 @@ class Scriblio_Authority_bGeo
 	{
 		add_action( 'init', array( $this, 'init' ), 1 );
 		add_action( 'add_meta_boxes', array( $this, 'add_meta_boxes' ), 10, 2 );
-		add_action( 'save_post', array( $this, 'save_post' ) );
+		add_action( 'save_post', array( $this, 'save_post' ), 3 );
 	} // END __construct
 
 	public function init()
@@ -206,10 +206,90 @@ class Scriblio_Authority_bGeo
 		$this->update_post_meta( $post_id, $_POST[ $this->id_base ] );
 	} // END save_post
 
+	public function update_post_meta_woeid( $post_id, $woeid_r )
+	{
+
+		// get the "official" parent geographies
+		$temp = array_intersect_key( (array) $woeid_r->places->place, array( 
+			'country' => TRUE,
+			'admin1' => TRUE,
+			'admin2' => TRUE,
+			'admin3' => TRUE,
+			'locality1' => TRUE,
+			'locality2' => TRUE,
+		) );
+		$parents = (array) wp_list_pluck( $temp, 'content' );
+
+		// get tje colloquial parent geographies
+		foreach ( $woeid_r->belongtos->place as $place )
+		{
+			if ( 24 == (int) $place->placeTypeName->code )
+			{
+				$parents[] = $place->name;
+			}
+		}
+
+		// clean and tidy the array
+		$parents = array_unique( array_filter( array_values( $parents ) ) );
+
+	}
+
+	public function update_post_meta_image( $post_id, $image_src, $image_name )
+	{
+		// source file name is added to the image title for better identification
+		$src_base = basename( $image_src );
+
+		// check if we already have that image loaded for this post
+		if ( $image_id = $this->_update_post_meta_image( $post_id, $image_src, $image_name . ' - ' . $src_base ) )
+		{
+			set_post_thumbnail( $post_id, $image_id );
+			return FALSE;
+		}
+
+		// import the image if it looks unique
+		media_sideload_image( $image_src, $post_id, $image_name . ' - ' . $src_base );
+
+		// because media_sideload_image doesn't return a post ID, look it up 
+		if ( ! $image_id = $this->_update_post_meta_image( $post_id, $image_src, $image_name . ' - ' . $src_base ) )
+		{
+			return FALSE;
+		}
+
+		// set the thumbnail
+		set_post_thumbnail( $post_id, $image_id );
+	}
+
+	public function _update_post_meta_image( $post_id, $image_src, $image_name )
+	{
+		$src_base = basename( $image_src );
+
+		$attachments = get_attached_media( 'image', $post_id );
+		foreach ( $attachments as $attachment )
+		{
+			if ( $attachment->post_title == $image_name )
+			{
+				return $attachment->ID;
+			}
+		}
+	}
+
+	public function update_post_meta_wikipedia( $post_id, $wikipedia_r )
+	{
+
+		// get thumbnail
+		$this->update_post_meta_image( $post_id, $wikipedia_r->thumbnail->source, $wikipedia_r->displaytitle . ' thumbnail' );
+
+		// get excerpt
+		$excerpt = $wikipedia_r->extract . "\n\n<a class=\"attribution\" href=\"{$wikipedia_r->fullurl}\">from Wikipedia</a>";
+
+		// get categories as tags
+		$tags = $wikipedia_r->parsedcategories;
+	}
+
 	public function update_post_meta( $post_id, $post_meta )
 	{
 		// filter the meta to set default values and whitelist the returned keys
-		$post_meta = array_replace( // set default values for everything, replace the defaults with specific values where present
+		$post_meta = (object) array_replace( // set default values for everything, replace the defaults with specific values where present
 			$this->post_meta_defaults,
 			array_intersect_key( // only return keys defined in the defaults, never any others
 				(array) $post_meta,
@@ -217,7 +297,44 @@ class Scriblio_Authority_bGeo
 			)
 		);
 
-		// parsing and sanitization here
+		// old post meta is used in some cases if the key values haven't changed
+		$old_meta = $this->get_post_meta( $post_id );
+
+		if ( ! empty( $post_meta->woeid ) )
+		{
+			if (
+				! isset( $old_meta->woeid_r ) ||
+				$old_meta->woeid_r->woeid != $post_meta->woeid
+			)
+			{
+				$post_meta->woeid_r->woeid = $post_meta->woeid;
+				$post_meta->woeid_r->places = bgeo()->yboss()->yql( 'SELECT * FROM geo.places WHERE woeid ="' . $post_meta->woeid . '"' );
+				$post_meta->woeid_r->belongtos = bgeo()->yboss()->yql( 'SELECT * FROM geo.places.belongtos WHERE member_woeid ="' . $post_meta->woeid . '"' );
+			}
+			else
+			{
+				$post_meta->woeid_r = $old_meta->woeid_r;
+			}
+
+			$this->update_post_meta_woeid( $post_id, $post_meta->woeid_r );
+		}
+
+		if ( ! empty( $post_meta->wikipedia ) )
+		{
+			if (
+				! isset( $old_meta->wikipedia_r ) ||
+				$old_meta->wikipedia_r->encodedtitle != $post_meta->wikipedia
+			)
+			{
+				$post_meta->wikipedia_r = $this->wikipedia()->get( $post_meta->wikipedia );
+			}
+			else
+			{
+				$post_meta->wikipedia_r = $old_meta->wikipedia_r;
+			}
+
+			$this->update_post_meta_wikipedia( $post_id, $post_meta->wikipedia_r );
+		}
 
 		update_post_meta( $post_id, $this->meta_key, (array) $post_meta );
 	} // END update_post_meta
